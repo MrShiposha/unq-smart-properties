@@ -5517,6 +5517,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-collator-selection"
+version = "3.0.0"
+source = "git+https://github.com/uniqueNetwork/cumulus.git?branch=polkadot-v0.9.17#0f5779b5e9f1e8bd851aaa94dad15870078d9528"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-authorship",
+ "pallet-session",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-collective"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.17#22d40c761a985482f93bbbea5ba4199bdba74f8e"
@@ -11904,10 +11924,13 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal",
+ "log",
  "orml-vesting",
  "pallet-aura",
+ "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-collator-selection",
  "pallet-common",
  "pallet-ethereum",
  "pallet-evm",
@@ -11920,6 +11943,7 @@ dependencies = [
  "pallet-nonfungible",
  "pallet-randomness-collective-flip",
  "pallet-refungible",
+ "pallet-session",
  "pallet-sudo",
  "pallet-template-transaction-payment",
  "pallet-timestamp",

@@ -34,6 +34,7 @@ runtime-benchmarks = [
     'pallet-nonfungible/runtime-benchmarks',
     'pallet-unique/runtime-benchmarks',
     'pallet-inflation/runtime-benchmarks',
+	"pallet-collator-selection/runtime-benchmarks",
     'pallet-xcm/runtime-benchmarks',
     'sp-runtime/runtime-benchmarks',
     'xcm-builder/runtime-benchmarks',
@@ -84,6 +85,9 @@ std = [
     'pallet-unique/std',
     'pallet-unq-scheduler/std',
     'pallet-charge-transaction/std',
+	"pallet-authorship/std",
+	'pallet-collator-selection/std',
+	"pallet-session/std",
     'up-data-structs/std',
     'sp-api/std',
     'sp-block-builder/std',
@@ -162,6 +166,16 @@ git = 'https://github.com/paritytech/substrate.git'
 branch = 'polkadot-v0.9.17'
 
 [dependencies.pallet-balances]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+branch = 'polkadot-v0.9.17'
+
+[dependencies.pallet-authorship]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+branch = 'polkadot-v0.9.17'
+
+[dependencies.pallet-session]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 branch = 'polkadot-v0.9.17'
@@ -336,6 +350,11 @@ git = 'https://github.com/uniqueNetwork/cumulus.git'
 branch = 'polkadot-v0.9.17'
 default-features = false
 
+[dependencies.pallet-collator-selection]
+default-features = false
+git = 'https://github.com/uniqueNetwork/cumulus.git'
+branch = 'polkadot-v0.9.17'
+
 ################################################################################
 # Polkadot dependencies
 
@@ -374,6 +393,7 @@ default-features = false
 # local dependencies
 
 [dependencies]
+log = { version = "0.4.14", default-features = false }
 scale-info = { version = "1.0.0", default-features = false, features = [
     "derive",
 ] }

@@ -79,8 +79,14 @@ pub fn development_config() -> ChainSpec {
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
-					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<AuraId>("Bob"),
+					),
 				],
 				// Pre-funded accounts
 				vec![
@@ -119,8 +125,14 @@ pub fn local_testnet_rococo_config() -> ChainSpec {
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
-					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<AuraId>("Bob"),
+					),
 				],
 				// Pre-funded accounts
 				vec![
@@ -169,11 +181,26 @@ pub fn local_testnet_westend_config() -> ChainSpec {
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
-					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
-					get_from_seed::<AuraId>("Charlie"),
-					get_from_seed::<AuraId>("Dave"),
-					get_from_seed::<AuraId>("Eve"),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<AuraId>("Bob"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						get_from_seed::<AuraId>("Charlie"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Dave"),
+						get_from_seed::<AuraId>("Dave"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Eve"),
+						get_from_seed::<AuraId>("Eve"),
+					),
 				],
 				// Pre-funded accounts
 				vec![
@@ -212,7 +239,7 @@ pub fn local_testnet_westend_config() -> ChainSpec {
 
 fn testnet_genesis(
 	root_key: AccountId,
-	initial_authorities: Vec<AuraId>,
+	invulnerables: Vec<(AccountId, AuraId)>,
 	endowed_accounts: Vec<AccountId>,
 	id: ParaId,
 ) -> GenesisConfig {
@@ -237,9 +264,26 @@ fn testnet_genesis(
 		vesting: VestingConfig { vesting: vec![] },
 		parachain_info: unique_runtime::ParachainInfoConfig { parachain_id: id },
 		parachain_system: Default::default(),
-		aura: unique_runtime::AuraConfig {
-			authorities: initial_authorities,
+		collator_selection: unique_runtime::CollatorSelectionConfig {
+			invulnerables: invulnerables.iter().cloned().map(|(acc, _)| acc).collect(),
+			candidacy_bond: unique_runtime::EXISTENTIAL_DEPOSIT * 16,
+			..Default::default()
 		},
+		session: unique_runtime::SessionConfig {
+			keys: invulnerables
+				.into_iter()
+				.map(|(acc, aura)| {
+					(
+						acc.clone(),                          // account id
+						acc,                                  // validator id
+						unique_runtime::SessionKeys { aura }, // session keys
+					)
+				})
+				.collect(),
+		},
+		aura: Default::default(), /*unique_runtime::AuraConfig {
+									  authorities: initial_authorities,
+								  },*/
 		aura_ext: Default::default(),
 		evm: EVMConfig {
 			accounts: BTreeMap::new(),
