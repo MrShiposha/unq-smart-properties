@@ -185,16 +185,16 @@ macro_rules! testnet_genesis {
 					.into_iter()
 					.map(|(acc, aura)| {
 						(
-							acc.clone(),                          // account id
-							acc,                                  // validator id
+							acc.clone(),          // account id
+							acc,                  // validator id
 							SessionKeys { aura }, // session keys
 						)
 					})
 					.collect(),
 			},
 			aura: Default::default(), /*AuraConfig {
-				authorities: $initial_authorities,
-			},*/
+										  authorities: $initial_authorities,
+									  },*/
 			aura_ext: Default::default(),
 			evm: EVMConfig {
 				accounts: BTreeMap::new(),
