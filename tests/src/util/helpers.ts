@@ -805,7 +805,7 @@ transferFromExpectFail(
 }
 
 /* eslint no-async-promise-executor: "off" */
-async function getBlockNumber(api: ApiPromise): Promise<number> {
+export async function getBlockNumber(api: ApiPromise): Promise<number> {
   return new Promise<number>(async (resolve) => {
     const unsubscribe = await api.rpc.chain.subscribeNewHeads((head) => {
       unsubscribe();
