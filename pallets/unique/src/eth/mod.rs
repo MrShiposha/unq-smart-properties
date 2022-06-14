@@ -20,8 +20,7 @@ use ethereum as _;
 use pallet_evm_coder_substrate::{SubstrateRecorder, WithRecorder};
 use pallet_evm::{OnMethodCall, PrecompileResult, account::CrossAccountId, PrecompileHandle};
 use up_data_structs::{
-	CreateCollectionData, MAX_COLLECTION_DESCRIPTION_LENGTH, MAX_TOKEN_PREFIX_LENGTH,
-	MAX_COLLECTION_NAME_LENGTH,
+	CreateCollectionData, CollectionName, CollectionDescription, CollectionTokenPrefix,
 };
 use frame_support::traits::Get;
 use pallet_common::{
@@ -44,8 +43,65 @@ impl<T: Config> WithRecorder<T> for EvmCollectionHelpers<T> {
 	}
 }
 
+fn convert_data<T: Config>(
+	caller: caller,
+	name: string,
+	description: string,
+	token_prefix: string,
+) -> Result<(
+	T::CrossAccountId,
+	CollectionName,
+	CollectionDescription,
+	CollectionTokenPrefix,
+)> {
+	let caller = T::CrossAccountId::from_eth(caller);
+	let name = name
+		.encode_utf16()
+		.collect::<Vec<u16>>()
+		.try_into()
+		.map_err(|_| error_feild_too_long(stringify!(name), CollectionName::bound()))?;
+	let description = description
+		.encode_utf16()
+		.collect::<Vec<u16>>()
+		.try_into()
+		.map_err(|_| {
+			error_feild_too_long(stringify!(description), CollectionDescription::bound())
+		})?;
+	let token_prefix = token_prefix.into_bytes().try_into().map_err(|_| {
+		error_feild_too_long(stringify!(token_prefix), CollectionTokenPrefix::bound())
+	})?;
+	Ok((caller, name, description, token_prefix))
+}
+
+fn make_data<T: Config>(
+	name: CollectionName,
+	description: CollectionDescription,
+	token_prefix: CollectionTokenPrefix,
+) -> Result<CreateCollectionData<T::AccountId>> {
+	let key = token_uri_key();
+	let permission = up_data_structs::PropertyPermission {
+		mutable: true,
+		collection_admin: true,
+		token_owner: false,
+	};
+	let mut token_property_permissions =
+		up_data_structs::CollectionPropertiesPermissionsVec::default();
+	token_property_permissions
+		.try_push(up_data_structs::PropertyKeyPermission { key, permission })
+		.map_err(|e| Error::Revert(format!("{:?}", e)))?;
+
+	let data = CreateCollectionData {
+		name,
+		description,
+		token_prefix,
+		token_property_permissions,
+		..Default::default()
+	};
+	Ok(data)
+}
+
 #[solidity_interface(name = "CollectionHelpers", events(CollectionHelpersEvents))]
-impl<T: Config + pallet_nonfungible::Config> EvmCollectionHelpers<T> {
+impl<T: Config + pallet_nonfungible::Config + pallet_refungible::Config> EvmCollectionHelpers<T> {
 	#[weight(<SelfWeightOf<T>>::create_collection())]
 	fn create_nonfungible_collection(
 		&self,
@@ -54,47 +110,30 @@ impl<T: Config + pallet_nonfungible::Config> EvmCollectionHelpers<T> {
 		description: string,
 		token_prefix: string,
 	) -> Result<address> {
-		let caller = T::CrossAccountId::from_eth(caller);
-		let name = name
-			.encode_utf16()
-			.collect::<Vec<u16>>()
-			.try_into()
-			.map_err(|_| error_feild_too_long(stringify!(name), MAX_COLLECTION_NAME_LENGTH))?;
-		let description = description
-			.encode_utf16()
-			.collect::<Vec<u16>>()
-			.try_into()
-			.map_err(|_| {
-				error_feild_too_long(stringify!(description), MAX_COLLECTION_DESCRIPTION_LENGTH)
-			})?;
-		let token_prefix = token_prefix
-			.into_bytes()
-			.try_into()
-			.map_err(|_| error_feild_too_long(stringify!(token_prefix), MAX_TOKEN_PREFIX_LENGTH))?;
-
-		let key = token_uri_key();
-		let permission = up_data_structs::PropertyPermission {
-			mutable: true,
-			collection_admin: true,
-			token_owner: false,
-		};
-		let mut token_property_permissions =
-			up_data_structs::CollectionPropertiesPermissionsVec::default();
-		token_property_permissions
-			.try_push(up_data_structs::PropertyKeyPermission { key, permission })
-			.map_err(|e| Error::Revert(format!("{:?}", e)))?;
-
-		let data = CreateCollectionData {
-			name,
-			description,
-			token_prefix,
-			token_property_permissions,
-			..Default::default()
-		};
-
+		let (caller, name, description, token_prefix) =
+			convert_data::<T>(caller, name, description, token_prefix)?;
+		let data = make_data::<T>(name, description, token_prefix)?;
 		let collection_id =
 			<pallet_nonfungible::Pallet<T>>::init_collection(caller.clone(), data, false)
 				.map_err(pallet_evm_coder_substrate::dispatch_to_evm::<T>)?;
+
+		let address = pallet_common::eth::collection_id_to_address(collection_id);
+		Ok(address)
+	}
+
+	#[weight(<SelfWeightOf<T>>::create_collection())]
+	fn create_refungible_collection(
+		&self,
+		caller: caller,
+		name: string,
+		description: string,
+		token_prefix: string,
+	) -> Result<address> {
+		let (caller, name, description, token_prefix) =
+			convert_data::<T>(caller, name, description, token_prefix)?;
+		let data = make_data::<T>(name, description, token_prefix)?;
+		let collection_id = <pallet_refungible::Pallet<T>>::init_collection(caller.clone(), data)
+			.map_err(pallet_evm_coder_substrate::dispatch_to_evm::<T>)?;
 
 		let address = pallet_common::eth::collection_id_to_address(collection_id);
 		Ok(address)
@@ -111,7 +150,9 @@ impl<T: Config + pallet_nonfungible::Config> EvmCollectionHelpers<T> {
 }
 
 pub struct CollectionHelpersOnMethodCall<T: Config>(PhantomData<*const T>);
-impl<T: Config + pallet_nonfungible::Config> OnMethodCall<T> for CollectionHelpersOnMethodCall<T> {
+impl<T: Config + pallet_nonfungible::Config + pallet_refungible::Config> OnMethodCall<T>
+	for CollectionHelpersOnMethodCall<T>
+{
 	fn is_reserved(contract: &sp_core::H160) -> bool {
 		contract == &T::ContractAddress::get()
 	}
@@ -139,6 +180,6 @@ impl<T: Config + pallet_nonfungible::Config> OnMethodCall<T> for CollectionHelpe
 generate_stubgen!(collection_helper_impl, CollectionHelpersCall<()>, true);
 generate_stubgen!(collection_helper_iface, CollectionHelpersCall<()>, false);
 
-fn error_feild_too_long(feild: &str, bound: u32) -> Error {
+fn error_feild_too_long(feild: &str, bound: usize) -> Error {
 	Error::Revert(format!("{} is too long. Max length is {}.", feild, bound))
 }

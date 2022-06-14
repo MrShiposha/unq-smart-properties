@@ -280,6 +280,10 @@ impl<T> Default for SponsorshipState<T> {
 	}
 }
 
+pub type CollectionName = BoundedVec<u16, ConstU32<MAX_COLLECTION_NAME_LENGTH>>;
+pub type CollectionDescription = BoundedVec<u16, ConstU32<MAX_COLLECTION_DESCRIPTION_LENGTH>>;
+pub type CollectionTokenPrefix = BoundedVec<u8, ConstU32<MAX_TOKEN_PREFIX_LENGTH>>;
+
 /// Used in storage
 #[struct_versioning::versioned(version = 2, upper)]
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
@@ -288,9 +292,9 @@ pub struct Collection<AccountId> {
 	pub mode: CollectionMode,
 	#[version(..2)]
 	pub access: AccessMode,
-	pub name: BoundedVec<u16, ConstU32<MAX_COLLECTION_NAME_LENGTH>>,
-	pub description: BoundedVec<u16, ConstU32<MAX_COLLECTION_DESCRIPTION_LENGTH>>,
-	pub token_prefix: BoundedVec<u8, ConstU32<MAX_TOKEN_PREFIX_LENGTH>>,
+	pub name: CollectionName,
+	pub description: CollectionDescription,
+	pub token_prefix: CollectionTokenPrefix,
 
 	#[version(..2)]
 	pub mint_mode: bool,
@@ -344,9 +348,9 @@ pub struct CreateCollectionData<AccountId> {
 	#[derivative(Default(value = "CollectionMode::NFT"))]
 	pub mode: CollectionMode,
 	pub access: Option<AccessMode>,
-	pub name: BoundedVec<u16, ConstU32<MAX_COLLECTION_NAME_LENGTH>>,
-	pub description: BoundedVec<u16, ConstU32<MAX_COLLECTION_DESCRIPTION_LENGTH>>,
-	pub token_prefix: BoundedVec<u8, ConstU32<MAX_TOKEN_PREFIX_LENGTH>>,
+	pub name: CollectionName,
+	pub description: CollectionDescription,
+	pub token_prefix: CollectionTokenPrefix,
 	pub pending_sponsor: Option<AccountId>,
 	pub limits: Option<CollectionLimits>,
 	pub permissions: Option<CollectionPermissions>,
