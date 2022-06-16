@@ -9,6 +9,9 @@ _help:
 FUNGIBLE_EVM_STUBS=./pallets/fungible/src/stubs
 FUNGIBLE_EVM_ABI=./tests/src/eth/fungibleAbi.json
 
+REFUNGIBLE_EVM_STUBS=./pallets/refungible/src/stubs
+REFUNGIBLE_EVM_ABI=./tests/src/eth/refungibleAbi.json
+
 NONFUNGIBLE_EVM_STUBS=./pallets/nonfungible/src/stubs
 NONFUNGIBLE_EVM_ABI=./tests/src/eth/nonFungibleAbi.json
 
@@ -21,11 +24,15 @@ COLLECTION_HELPER_ABI=./tests/src/eth/collectionHelpersAbi.json
 TESTS_API=./tests/src/eth/api/
 
 .PHONY: regenerate_solidity
-regenerate_solidity: UniqueFungible.sol UniqueNFT.sol ContractHelpers.sol CollectionHelpers.sol
+regenerate_solidity: UniqueFungible.sol UniqueRefungible.sol UniqueNFT.sol ContractHelpers.sol CollectionHelpers.sol
 
 UniqueFungible.sol:
 	PACKAGE=pallet-fungible NAME=erc::gen_iface OUTPUT=$(TESTS_API)/$@ ./.maintain/scripts/generate_sol.sh
 	PACKAGE=pallet-fungible NAME=erc::gen_impl OUTPUT=$(FUNGIBLE_EVM_STUBS)/$@ ./.maintain/scripts/generate_sol.sh
+
+UniqueRefungible.sol:
+	PACKAGE=pallet-refungible NAME=erc::gen_iface OUTPUT=$(TESTS_API)/$@ ./.maintain/scripts/generate_sol.sh
+	PACKAGE=pallet-refungible NAME=erc::gen_impl OUTPUT=$(REFUNGIBLE_EVM_STUBS)/$@ ./.maintain/scripts/generate_sol.sh
 
 UniqueNFT.sol:
 	PACKAGE=pallet-nonfungible NAME=erc::gen_iface OUTPUT=$(TESTS_API)/$@ ./.maintain/scripts/generate_sol.sh
@@ -43,6 +50,10 @@ UniqueFungible: UniqueFungible.sol
 	INPUT=$(FUNGIBLE_EVM_STUBS)/$< OUTPUT=$(FUNGIBLE_EVM_STUBS)/UniqueFungible.raw ./.maintain/scripts/compile_stub.sh
 	INPUT=$(FUNGIBLE_EVM_STUBS)/$< OUTPUT=$(FUNGIBLE_EVM_ABI) ./.maintain/scripts/generate_abi.sh
 
+UniqueRefungible: UniqueRefungible.sol
+	INPUT=$(REFUNGIBLE_EVM_STUBS)/$< OUTPUT=$(REFUNGIBLE_EVM_STUBS)/UniqueRefungible.raw ./.maintain/scripts/compile_stub.sh
+	INPUT=$(REFUNGIBLE_EVM_STUBS)/$< OUTPUT=$(REFUNGIBLE_EVM_ABI) ./.maintain/scripts/generate_abi.sh
+
 UniqueNFT: UniqueNFT.sol
 	INPUT=$(NONFUNGIBLE_EVM_STUBS)/$< OUTPUT=$(NONFUNGIBLE_EVM_STUBS)/UniqueNFT.raw ./.maintain/scripts/compile_stub.sh
 	INPUT=$(NONFUNGIBLE_EVM_STUBS)/$< OUTPUT=$(NONFUNGIBLE_EVM_ABI) ./.maintain/scripts/generate_abi.sh
@@ -55,7 +66,7 @@ CollectionHelpers: CollectionHelpers.sol
 	INPUT=$(COLLECTION_HELPER_STUBS)/$< OUTPUT=$(COLLECTION_HELPER_STUBS)/CollectionHelpers.raw ./.maintain/scripts/compile_stub.sh
 	INPUT=$(COLLECTION_HELPER_STUBS)/$< OUTPUT=$(COLLECTION_HELPER_ABI) ./.maintain/scripts/generate_abi.sh
 
-evm_stubs: UniqueFungible UniqueNFT ContractHelpers CollectionHelpers
+evm_stubs: UniqueFungible UniqueRefungible UniqueNFT ContractHelpers CollectionHelpers
 
 .PHONY: _bench
 _bench:

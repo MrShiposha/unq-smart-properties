@@ -29,10 +29,24 @@ contract CollectionHelpersEvents {
 	);
 }
 
-// Selector: 20947cd0
+// Selector: 6432f605
 contract CollectionHelpers is Dummy, ERC165, CollectionHelpersEvents {
 	// Selector: createNonfungibleCollection(string,string,string) e34a6844
 	function createNonfungibleCollection(
+		string memory name,
+		string memory description,
+		string memory tokenPrefix
+	) public view returns (address) {
+		require(false, stub_error);
+		name;
+		description;
+		tokenPrefix;
+		dummy;
+		return 0x0000000000000000000000000000000000000000;
+	}
+
+	// Selector: createRefungibleCollection(string,string,string) 44a68ad5
+	function createRefungibleCollection(
 		string memory name,
 		string memory description,
 		string memory tokenPrefix
