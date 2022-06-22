@@ -20,7 +20,7 @@ use ethereum as _;
 use pallet_evm_coder_substrate::{SubstrateRecorder, WithRecorder};
 use pallet_evm::{OnMethodCall, PrecompileResult, account::CrossAccountId, PrecompileHandle};
 use up_data_structs::{
-	CreateCollectionData, CollectionName, CollectionDescription, CollectionTokenPrefix,
+	CreateCollectionData, CollectionName, CollectionMode, CollectionDescription, CollectionTokenPrefix,
 };
 use frame_support::traits::Get;
 use pallet_common::{
@@ -75,6 +75,7 @@ fn convert_data<T: Config>(
 
 fn make_data<T: Config>(
 	name: CollectionName,
+	mode: CollectionMode,
 	description: CollectionDescription,
 	token_prefix: CollectionTokenPrefix,
 ) -> Result<CreateCollectionData<T::AccountId>> {
@@ -92,6 +93,7 @@ fn make_data<T: Config>(
 
 	let data = CreateCollectionData {
 		name,
+		mode,
 		description,
 		token_prefix,
 		token_property_permissions,
@@ -112,7 +114,7 @@ impl<T: Config + pallet_nonfungible::Config + pallet_refungible::Config> EvmColl
 	) -> Result<address> {
 		let (caller, name, description, token_prefix) =
 			convert_data::<T>(caller, name, description, token_prefix)?;
-		let data = make_data::<T>(name, description, token_prefix)?;
+		let data = make_data::<T>(name, CollectionMode::NFT, description, token_prefix)?;
 		let collection_id =
 			<pallet_nonfungible::Pallet<T>>::init_collection(caller.clone(), data, false)
 				.map_err(pallet_evm_coder_substrate::dispatch_to_evm::<T>)?;
@@ -131,7 +133,7 @@ impl<T: Config + pallet_nonfungible::Config + pallet_refungible::Config> EvmColl
 	) -> Result<address> {
 		let (caller, name, description, token_prefix) =
 			convert_data::<T>(caller, name, description, token_prefix)?;
-		let data = make_data::<T>(name, description, token_prefix)?;
+		let data = make_data::<T>(name, CollectionMode::ReFungible, description, token_prefix)?;
 		let collection_id = <pallet_refungible::Pallet<T>>::init_collection(caller.clone(), data)
 			.map_err(pallet_evm_coder_substrate::dispatch_to_evm::<T>)?;
 
