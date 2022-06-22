@@ -20,7 +20,8 @@ use ethereum as _;
 use pallet_evm_coder_substrate::{SubstrateRecorder, WithRecorder};
 use pallet_evm::{OnMethodCall, PrecompileResult, account::CrossAccountId, PrecompileHandle};
 use up_data_structs::{
-	CreateCollectionData, CollectionName, CollectionMode, CollectionDescription, CollectionTokenPrefix,
+	CreateCollectionData, CollectionName, CollectionMode, CollectionDescription,
+	CollectionTokenPrefix,
 };
 use frame_support::traits::Get;
 use pallet_common::{
