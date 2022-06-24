@@ -49,6 +49,7 @@ pub trait WeightInfo {
 	fn transfer_from_removing() -> Weight;
 	fn transfer_from_creating_removing() -> Weight;
 	fn burn_from() -> Weight;
+	fn refractionalize_item() -> Weight;
 }
 
 /// Weights for pallet_refungible using the Substrate node and recommended hardware.
@@ -212,6 +213,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
+	// Storage: Refungible TotalSupply (r:1 w:1)
+	// Storage: Refungible Balance (r:1 w:1)
+	// Storage: Refungible AccountBalance (r:1 w:1)
+	// Storage: Refungible Owned (r:0 w:1)
+	fn refractionalize_item() -> Weight {
+		(24_421_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -373,5 +383,14 @@ impl WeightInfo for () {
 		(42_259_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
+	}
+	// Storage: Refungible TotalSupply (r:1 w:1)
+	// Storage: Refungible Balance (r:1 w:1)
+	// Storage: Refungible AccountBalance (r:1 w:1)
+	// Storage: Refungible Owned (r:0 w:1)
+	fn refractionalize_item() -> Weight {
+		(24_421_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
 }

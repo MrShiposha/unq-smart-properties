@@ -259,7 +259,7 @@ impl<T: Config> CommonCollectionOperations<T> for RefungibleHandle<T> {
 		amount: u128,
 	) -> DispatchResultWithPostInfo {
 		with_weight(
-			<Pallet<T>>::set_allowance(self, &sender, &spender, token, amount),
+			Pallet::<T>::set_allowance(self, &sender, &spender, token, amount),
 			<CommonWeights<T>>::approve(),
 		)
 	}
