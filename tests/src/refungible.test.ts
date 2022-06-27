@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
 
-import {default as usingApi} from './substrate/substrate-api';
+import {default as usingApi, executeTransaction} from './substrate/substrate-api';
 import {IKeyringPair} from '@polkadot/types/types';
 import {
   createCollectionExpectSuccess,
@@ -29,6 +29,8 @@ import {
   createRefungibleToken,
   transfer,
   burnItem,
+  createCollectionWithPropsExpectSuccess,
+  getDetailedCollectionInfo,
 } from './util/helpers';
 
 import chai from 'chai';
@@ -160,6 +162,57 @@ describe('integration test: Refungible functionality:', () => {
       expect(await getBalance(api, collectionId, alice, tokenId)).to.be.equal(80n);
       expect(await getBalance(api, collectionId, bob, tokenId)).to.be.equal(20n);
       expect(await getAllowance(api, collectionId, alice, bob, tokenId)).to.be.equal(40n);
+    });
+  });
+});
+
+describe('Test Refungible properties:', () => {
+  before(async () => {
+    await usingApi(async (api, privateKeyWrapper) => {
+      alice = privateKeyWrapper('//Alice');
+      bob = privateKeyWrapper('//Bob');
+    });
+  });
+  
+  it('Сreate new collection with properties', async () => {
+    await usingApi(async api => {
+      const properties = [{key: 'key1', value: 'val1'}];
+      const propertyPermissions = [{key: 'key1', permission: {tokenOwner: true, mutable: false, collectionAdmin: true}}];
+      const collectionId = await createCollectionWithPropsExpectSuccess({name: 'A', description: 'B', tokenPrefix: 'C', mode: {type: 'ReFungible'},
+        properties: properties,
+        propPerm: propertyPermissions, 
+      });
+      const collection = (await getDetailedCollectionInfo(api, collectionId))!;
+      expect(collection.properties.toHuman()).to.be.deep.equal(properties);
+      expect(collection.tokenPropertyPermissions.toHuman()).to.be.deep.equal(propertyPermissions);
+    });
+  });
+
+  it.only('Set properties for exist collection', async () => {
+    await usingApi(async api => {
+      const collectionId = await createCollectionExpectSuccess({name: 'A', description: 'B', tokenPrefix: 'C', mode: {type: 'ReFungible'},
+      });
+
+      const properties = [{key: 'key1', value: 'val1'}];
+      // await expect(executeTransaction(
+      //   api, 
+      //   alice, 
+      //   api.tx.unique.setCollectionProperties(collectionId, properties), 
+      // )).to.not.be.rejected;
+
+      const propertyPermissions = [
+        {key: 'key1', permission: {collectionAdmin: true, mutable: false, tokenOwner: true}},
+        {key: 'key2', permission: {collectionAdmin: false, mutable: true, tokenOwner: false}},
+      ];
+      await expect(executeTransaction(
+        api, 
+        alice, 
+        api.tx.unique.setTokenPropertyPermissions(collectionId, propertyPermissions), 
+      )).to.not.be.rejected;
+
+      const collection = (await getDetailedCollectionInfo(api, collectionId))!;
+      expect(collection.properties.toHuman()).to.be.deep.equal(properties);
+      expect(collection.tokenPropertyPermissions.toHuman()).to.be.deep.equal(propertyPermissions);
     });
   });
 });
