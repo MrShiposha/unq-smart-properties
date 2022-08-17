@@ -9,12 +9,12 @@ evm-coder-macros = { path = "../evm-coder-macros" }
 primitive-types = { version = "0.11.1", default-features = false }
 hex-literal = "0.3.3"
 ethereum = { version = "0.12.0", default-features = false }
-evm-core = { default-features = false , git = "https://github.com/uniquenetwork/evm", branch = "unique-polkadot-v0.9.24" }
 impl-trait-for-tuples = "0.2.1"
+evm-execution = { default-features = false, path = "../evm-execution" }
 
 [dev-dependencies]
 hex = "0.4.3"
 
 [features]
 default = ["std"]
-std = ["ethereum/std", "primitive-types/std", "evm-core/std"]
+std = ["ethereum/std", "primitive-types/std", "evm-execution/std"]

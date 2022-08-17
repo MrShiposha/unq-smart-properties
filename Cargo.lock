@@ -2343,7 +2343,7 @@ version = "0.1.0"
 dependencies = [
  "ethereum",
  "evm-coder-macros",
- "evm-core",
+ "evm-execution",
  "hex",
  "hex-literal",
  "impl-trait-for-tuples",
@@ -2356,7 +2356,9 @@ version = "0.1.0"
 dependencies = [
  "Inflector",
  "darling",
+ "evm-execution",
  "hex",
+ "primitive-types",
  "proc-macro2",
  "quote",
  "sha3 0.9.1",
@@ -2372,6 +2374,16 @@ dependencies = [
  "primitive-types",
  "scale-info",
  "serde",
+]
+
+[[package]]
+name = "evm-execution"
+version = "0.1.0"
+dependencies = [
+ "evm-core",
+ "hex",
+ "hex-literal",
+ "primitive-types",
 ]
 
 [[package]]

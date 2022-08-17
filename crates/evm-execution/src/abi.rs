@@ -25,10 +25,9 @@ use evm_core::ExitError;
 use primitive_types::{H160, U256};
 
 use crate::{
-	execution::{Error, ResultWithPostInfo, WithPostDispatchInfo},
+	Result, Error, ResultWithPostInfo, WithPostDispatchInfo,
 	types::{string, self},
 };
-use crate::execution::Result;
 
 const ABI_ALIGNMENT: usize = 32;
 

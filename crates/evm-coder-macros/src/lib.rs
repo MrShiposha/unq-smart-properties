@@ -16,14 +16,19 @@
 
 #![allow(dead_code)]
 
-use darling::FromMeta;
+use darling::{FromMeta, ToTokens};
+use evm_execution::abi::AbiWriter;
+use primitive_types::U256;
 use inflector::cases;
 use proc_macro::TokenStream;
 use quote::quote;
 use sha3::{Digest, Keccak256};
 use syn::{
 	AttributeArgs, DeriveInput, GenericArgument, Ident, ItemImpl, Pat, Path, PathArguments,
-	PathSegment, Type, parse_macro_input, spanned::Spanned,
+	PathSegment, Type, parse_macro_input,
+	spanned::Spanned,
+	Token, Signature, Expr, ExprCall, Lit, LitByteStr,
+	parse::{Parser, ParseStream},
 };
 
 mod solidity_interface;
@@ -57,6 +62,204 @@ pub fn fn_selector(input: TokenStream) -> TokenStream {
 		#selector
 	})
 	.into()
+}
+
+/// Returns solidity interface id by its textual representation
+///
+/// Functions' modifiers are irrelevant when computing the interface id,
+/// thus they should be ommited
+///
+/// ```ignore
+/// use evm_coder_macros::interface_id;
+///
+/// let my_interface_id = interface_id! {
+/// 	fn validate(address, bytes);
+/// 	fn onUpgrade();
+/// }
+/// assert_eq!(my_interface_id, 0xdeaddead);
+/// ```
+#[proc_macro]
+pub fn interface_id(input: TokenStream) -> TokenStream {
+	let input: proc_macro2::TokenStream = input.into();
+	let input_span = input.span();
+
+	fn fn_selector(signature: Signature) -> u32 {
+		fn_selector_str(
+			&(signature.ident.to_string() + &signature.inputs.into_token_stream().to_string()),
+		)
+	}
+
+	let parse_fn_decls = |stream: ParseStream<'_>| -> syn::parse::Result<u32> {
+		if stream.is_empty() {
+			return Err(syn::Error::new(
+				input_span.into(),
+				"interface functions are expected",
+			));
+		}
+
+		let mut interface_id = None;
+
+		while !stream.is_empty() {
+			let signature: Signature = stream.parse()?;
+			stream.parse::<Token![;]>()?;
+
+			let selector = fn_selector(signature);
+			interface_id = Some(interface_id.map(|id| id ^ selector).unwrap_or(selector));
+		}
+
+		Ok(interface_id.unwrap())
+	};
+
+	let parser = parse_fn_decls;
+	let iterface_id = match parser.parse2(input) {
+		Ok(id) => id,
+		Err(err) => return err.into_compile_error().into(),
+	};
+
+	quote! {
+		#iterface_id
+	}
+	.into()
+}
+
+///
+/// ```ignore
+/// use evm_coder_macros::contract_call;
+///
+/// let data = contract_call![supportsInterface(0x01ffc9a7 as uint32)]
+/// 
+/// // TODO CHECK ME!
+/// assert_eq!(data, b"01ffc9a701ffc9a700000000000000000000000000000000000000000000000000000000")
+/// ```
+#[proc_macro]
+pub fn contract_call(input: TokenStream) -> TokenStream {
+	let call = parse_macro_input!(input as ExprCall);
+
+	let fn_name = match *call.func {
+		Expr::Path(path) if path.path.segments.len() == 1 => path
+			.path
+			.segments
+			.first()
+			.cloned()
+			.unwrap()
+			.to_token_stream()
+			.to_string(),
+		_ => {
+			return syn::Error::new(call.func.span(), "function name is expected")
+				.into_compile_error()
+				.into()
+		}
+	};
+
+	let args = call.args.into_iter();
+	let types_and_args = args
+		.map(|arg| match arg {
+			Expr::Cast(cast) => Ok((
+				cast.ty.to_token_stream().to_string(),
+				*cast.expr.clone()
+			)),
+			_ => Err(syn::Error::new(arg.span(), "expected <arg> as <type>")),
+		})
+		.collect::<Result<Vec<_>, _>>();
+
+	let types_and_args = match types_and_args {
+		Ok(types_and_args) => types_and_args,
+		Err(err) => return err.to_compile_error().into(),
+	};
+
+	let types = types_and_args.clone().into_iter().map(|(ty, _)| ty).collect::<Vec<_>>();
+	let args = types_and_args.into_iter().map(|(_, arg)| arg);
+
+	let signature = fn_name + "(" + &types.join(",") + ")";
+	let selector = fn_selector_str(&signature);
+
+	match try_compile_time_encode(selector, args.clone(), types.iter()) {
+		Some(encoded_call) => encoded_call,
+		None => quote! {{
+			use evm_execution::abi_encode;
+
+			let writer = abi_encode![call #selector; #(#types(#args)),*];
+			writer.finish()
+		}}.into()
+	}
+}
+
+fn try_compile_time_encode<'s>(
+	selector: u32,
+	args: impl Iterator<Item=Expr>,
+	types: impl Iterator<Item=&'s String>
+) -> Option<TokenStream> {
+	let mut writer = AbiWriter::new_call(selector);
+
+	macro_rules! expected_type {
+		($arg:ident: $ty:ident, expected_type = $($exp_ty:tt)*) => {
+			if $ty != stringify![$($exp_ty)*] {
+				return Some(
+					syn::Error::new($arg.span(), format!{
+						"the argument has type {} while it is expected to be {}",
+						$ty, stringify![$($exp_ty)*],
+					}.as_str())
+					.into_compile_error()
+					.into()
+				);
+			}
+		};
+	}
+
+	macro_rules! encode_num {
+		($arg:ident: $ty:ident, variants: [$($num_type:ident => $rust_ty:ty),+]) => {
+			match $ty.as_str() {
+				$(stringify![$num_type] => {
+					let num = match $arg.base10_parse::<$rust_ty>() {
+						Ok(num) => num,
+						Err(_) => return Some(
+							syn::Error::new($arg.span(), format!{
+								"unable to parse the argument as {}", stringify![$num_type]
+							}.as_str())
+							.into_compile_error()
+							.into()
+						)
+					};
+					writer.$num_type(&num);
+				}),+
+				_ => expected_type!($arg: $ty, expected_type = <$($num_type)|+>)
+			}
+		};
+	}
+
+	for (arg, ty) in args.zip(types) {
+		match arg {
+			Expr::Lit(expr) => match expr.lit {
+				Lit::Str(s) => {
+					expected_type!(s: ty, expected_type = string);
+					writer.string(&s.value())
+				}
+				Lit::ByteStr(b) => {
+					expected_type!(b: ty, expected_type = bytes);
+					writer.bytes(&b.value())
+				},
+				Lit::Int(num) => encode_num! {
+					num: ty, variants: [
+						uint8 => u8,
+						uint32 => u32,
+						uint128 => u128,
+						uint256 => U256
+					]
+				},
+				Lit::Bool(b) => {
+					expected_type!(b: ty, expected_type = bool);
+					writer.bool(&b.value());
+				}
+				_ => return None
+			},
+			_ => return None
+		}
+	}
+
+	let bytes = writer.finish();
+	let byte_str = LitByteStr::new(bytes.as_slice(), proc_macro2::Span::call_site());
+
+	Some(quote!(#byte_str).into())
 }
 
 fn event_selector_str(input: &str) -> [u8; 32] {
